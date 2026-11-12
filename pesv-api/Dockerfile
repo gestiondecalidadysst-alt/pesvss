@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npx prisma generate && npm run build
 
@@ -22,4 +22,4 @@ COPY package*.json ./
 
 EXPOSE 3000
 # Sincroniza el esquema, carga el catálogo de requisitos y arranca.
-CMD npx prisma db push --skip-generate && node dist/prisma/seed.js && node dist/src/server.js
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/prisma/seed.js && node dist/src/server.js"]

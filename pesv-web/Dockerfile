@@ -2,7 +2,7 @@
 FROM node:20-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 # La URL de la API se inyecta en tiempo de build (Vite la incrusta).
 ARG VITE_API_URL
