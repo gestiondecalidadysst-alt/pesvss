@@ -42,3 +42,20 @@ export interface Requisito {
   entradas: { origenPaso: number; tipoDato: string }[];
   salidas: { destinoPaso: number; tipoDato: string }[];
 }
+
+export interface Evidencia {
+  id: string;
+  nombreArchivo: string;
+  hashSha256: string;
+  version: number;
+  firmantePor: string | null;
+  firmadoAt: string | null;
+  vigenteHasta: string | null;
+  createdAt: string;
+}
+
+export interface DetalleRequisito {
+  requisito: Requisito;
+  estado: { estado: EstadoRequisito } | null;
+  evidencias: Evidencia[];
+}

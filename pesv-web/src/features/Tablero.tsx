@@ -2,7 +2,7 @@
 // Muestra el nivel, el porcentaje global y el estado de cada dominio.
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { DOMINIOS, ESTADO_META, NIVEL_LABEL } from '../lib/dominios';
 import { Card, MetricCard, Progress } from '../components/ui';
@@ -10,6 +10,7 @@ import type { Resumen, Requisito, EstadoRequisito } from '../types';
 
 export function Tablero() {
   const { orgId = '' } = useParams();
+  const navigate = useNavigate();
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [requisitos, setRequisitos] = useState<Requisito[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,13 @@ export function Tablero() {
               <Progress pct={pct} />
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {d.pasos.map((p) => (
-                  <PasoChip key={p} paso={p} nombre={porPaso.get(p)?.nombre ?? `Paso ${p}`} estado={estados[p]} />
+                  <PasoChip
+                    key={p}
+                    paso={p}
+                    nombre={porPaso.get(p)?.nombre ?? `Paso ${p}`}
+                    estado={estados[p]}
+                    onClick={() => navigate(`/requisito/${orgId}/${p}`)}
+                  />
                 ))}
               </div>
             </Card>
@@ -79,16 +86,28 @@ export function Tablero() {
   );
 }
 
-function PasoChip({ paso, nombre, estado }: { paso: number; nombre: string; estado: EstadoRequisito }) {
+function PasoChip({
+  paso,
+  nombre,
+  estado,
+  onClick,
+}: {
+  paso: number;
+  nombre: string;
+  estado: EstadoRequisito;
+  onClick: () => void;
+}) {
   const m = ESTADO_META[estado ?? 'PENDIENTE'];
   return (
-    <span
+    <button
+      type="button"
+      onClick={onClick}
       title={`Paso ${paso} · ${nombre}`}
-      className="text-xs px-2 py-0.5 rounded-md font-mono"
+      className="text-xs px-2 py-0.5 rounded-md font-mono border-0 cursor-pointer hover:opacity-80"
       style={{ background: m.bg, color: m.color }}
     >
       {paso}
-    </span>
+    </button>
   );
 }
 

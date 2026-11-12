@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Clasificacion } from './features/Clasificacion';
 import { Tablero } from './features/Tablero';
+import { Detalle } from './features/Detalle';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Clasificacion />} />
           <Route path="/tablero/:orgId" element={<Tablero />} />
+          <Route path="/requisito/:orgId/:paso" element={<Detalle />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
