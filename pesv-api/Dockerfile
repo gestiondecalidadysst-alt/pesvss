@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npx prisma generate && npm run build
+# DATABASE_URL ficticio solo para que `prisma generate` valide el esquema
+# durante el build; la conexión real se inyecta en runtime.
+RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" npx prisma generate && npm run build
 
 FROM node:20-slim
 WORKDIR /app
