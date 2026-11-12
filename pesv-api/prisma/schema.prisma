@@ -1,0 +1,163 @@
+// Esquema de datos — Plataforma PESV (Fase 1)
+// Base de datos: PostgreSQL · ORM: Prisma
+// Cubre: organización, usuarios, catálogo de requisitos con sus
+// dependencias (entradas/salidas), estado derivado, evidencias con
+// huella y registro de auditoría encadenado.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enumeraciones -------------------------------------------------
+
+enum NivelPesv {
+  BASICO
+  ESTANDAR
+  AVANZADO
+}
+
+enum Misionalidad {
+  TRANSPORTE // empresa dedicada al transporte
+  OTRA       // misionalidad diferente al transporte
+}
+
+enum EstadoRequisito {
+  NO_APLICA   // no aplica al nivel de la empresa
+  PENDIENTE   // aplica pero no se ha trabajado
+  EN_PROGRESO // faltan entradas o evidencia
+  CUMPLE      // evidencia vigente + dependencias cumplidas
+  VENCIDO     // tenía evidencia pero venció
+}
+
+enum RolUsuario {
+  LIDER
+  COMITE
+  OPERATIVO
+  AUDITOR // solo lectura
+}
+
+// --- Organización y usuarios --------------------------------------
+
+model Organizacion {
+  id             String       @id @default(uuid())
+  nombre         String
+  nit            String?
+  ciudad         String?
+  misionalidad   Misionalidad @default(TRANSPORTE)
+  numVehiculos   Int          @default(0)
+  numConductores Int          @default(0)
+
+  // Nivel calculado automáticamente a partir de flota y conductores.
+  nivelCalculado NivelPesv @default(BASICO)
+  // Ajuste manual a un nivel SUPERIOR (la norma lo permite). Null = usar el calculado.
+  nivelManual    NivelPesv?
+
+  usuarios  Usuario[]
+  estados   RequisitoEstado[]
+  evidencias Evidencia[]
+  auditoria AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Usuario {
+  id           String       @id @default(uuid())
+  organizacion Organizacion @relation(fields: [orgId], references: [id])
+  orgId        String
+  email        String       @unique
+  nombre       String
+  rol          RolUsuario   @default(OPERATIVO)
+  passwordHash String
+  createdAt    DateTime     @default(now())
+}
+
+// --- Catálogo de requisitos (los 24 pasos) ------------------------
+// Es un catálogo global (igual para todas las empresas). La empresa
+// solo guarda el ESTADO de cada requisito, no el requisito en sí.
+
+model Requisito {
+  paso        Int       @id // 1..24
+  nombre      String
+  // Nivel mínimo desde el que aplica. Una empresa cumple el requisito
+  // si su nivel efectivo es >= a este (BASICO < ESTANDAR < AVANZADO).
+  nivelMinimo NivelPesv
+  descripcion String?
+
+  // Dependencias: aristas del grafo entradas/salidas.
+  salidas  RequisitoDependencia[] @relation("origen")
+  entradas RequisitoDependencia[] @relation("destino")
+
+  estados    RequisitoEstado[]
+  evidencias Evidencia[]
+}
+
+// Una arista: el paso `origen` produce un dato que es entrada del paso `destino`.
+model RequisitoDependencia {
+  id        Int       @id @default(autoincrement())
+  origen    Requisito @relation("origen", fields: [origenPaso], references: [paso])
+  origenPaso Int
+  destino   Requisito @relation("destino", fields: [destinoPaso], references: [paso])
+  destinoPaso Int
+  tipoDato  String // qué viaja por la arista: "riesgos criticos", "mediciones"...
+
+  @@unique([origenPaso, destinoPaso])
+}
+
+// Estado de un requisito para UNA organización (derivado, no marcado a mano).
+model RequisitoEstado {
+  id           String          @id @default(uuid())
+  organizacion Organizacion    @relation(fields: [orgId], references: [id])
+  orgId        String
+  requisito    Requisito       @relation(fields: [paso], references: [paso])
+  paso         Int
+  estado       EstadoRequisito @default(PENDIENTE)
+  justificacion String?        // obligatoria cuando el estado es NO_APLICA
+  calculadoAt  DateTime        @default(now())
+
+  @@unique([orgId, paso])
+}
+
+// --- Evidencias con huella ----------------------------------------
+
+model Evidencia {
+  id            String       @id @default(uuid())
+  organizacion  Organizacion @relation(fields: [orgId], references: [id])
+  orgId         String
+  requisito     Requisito    @relation(fields: [paso], references: [paso])
+  paso          Int
+  nombreArchivo String
+  rutaArchivo   String       // ubicación en el almacenamiento (S3/MinIO)
+  hashSha256    String       // huella del archivo
+  version       Int          @default(1)
+  firmantePor   String?
+  firmadoAt     DateTime?
+  vigenteHasta  DateTime?    // null = sin vencimiento
+  createdAt     DateTime     @default(now())
+}
+
+// --- Auditoría encadenada -----------------------------------------
+// Cada fila guarda el hash de la fila anterior; alterar el pasado
+// rompe la cadena. Append-only: nunca se edita ni se borra.
+
+model AuditLog {
+  id           String        @id @default(uuid())
+  organizacion Organizacion  @relation(fields: [orgId], references: [id])
+  orgId        String
+  usuarioId    String?
+  accion       String        // "CREAR" | "EDITAR" | "CAMBIO_NIVEL" | ...
+  entidad      String        // "Evidencia" | "Organizacion" | ...
+  entidadId    String?
+  valorAnterior Json?
+  valorNuevo    Json?
+  hashPrevio   String?
+  hash         String
+  createdAt    DateTime      @default(now())
+
+  @@index([orgId, createdAt])
+}

@@ -1,0 +1,31 @@
+{
+  "name": "pesv-api",
+  "version": "0.1.0",
+  "description": "Backend de la plataforma PESV (Res. 40595 de 2022) — Fase 1 (MVP)",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "express": "^4.21.1",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.9.0",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3"
+  }
+}
